@@ -1,23 +1,37 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1.endpoints import places, auth
+app = FastAPI()
 
-app = FastAPI(title="Travel Planner API", version="0.1.0")
-
-# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(places.router, prefix="/api/v1/places", tags=["places"])
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_text()
+            print(f"Получен запрос: {data}")
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the Travel Planner API"} 
+            suggestions = [
+                {
+                    "name": f"Музей в {data}",
+                    "description": "Интересный музей для посещения.",
+                    "tags": ["искусство", "история"]
+                },
+                {
+                    "name": f"Парк в {data}",
+                    "description": "Красивый парк для отдыха и прогулок.",
+                    "tags": ["природа", "отдых"]
+                },
+            ]
+
+            await websocket.send_json(suggestions)
+    except WebSocketDisconnect:
+        print("Клиент отключился")
