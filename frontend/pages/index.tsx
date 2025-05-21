@@ -37,7 +37,7 @@ export default function Home() {
   // const [recommendedRoutes, setRecommendedRoutes] = useState(allRoutes);
   const [recommendedRoutes] = useState(allRoutes);
   const [visibleRecommended, setVisibleRecommended] = useState(allRoutes.slice(0, 3));
-  const [lastVisibleIds, setLastVisibleIds] = useState(allRoutes.slice(0, 3).map(r => r.id));
+  // const [lastVisibleIds, setLastVisibleIds] = useState(allRoutes.slice(0, 3).map(r => r.id));
   const router = useRouter();
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -56,7 +56,7 @@ const handleShuffle = () => {
     const shuffled = shuffleArray(recommendedRoutes);
     const newVisible = shuffled.slice(0, 3);
     setVisibleRecommended(newVisible);
-    setLastVisibleIds(newVisible.map(r => r.id));
+    // setLastVisibleIds(newVisible.map(r => r.id));
     return;
   }
 
