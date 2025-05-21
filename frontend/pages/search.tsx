@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import Link from "next/link";
 import React from "react";
-import Sidebar from "../components/Sidebar"
+// import Sidebar from "../components/Sidebar"
 
 
 const allRoutes = [
