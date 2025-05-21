@@ -34,7 +34,8 @@ function shuffleArray<T>(array: T[]): T[] {
 export default function Home() {
   const [location, setLocation] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [recommendedRoutes, setRecommendedRoutes] = useState(allRoutes);
+  // const [recommendedRoutes, setRecommendedRoutes] = useState(allRoutes);
+  const [recommendedRoutes] = useState(allRoutes);
   const [visibleRecommended, setVisibleRecommended] = useState(allRoutes.slice(0, 3));
   const [lastVisibleIds, setLastVisibleIds] = useState(allRoutes.slice(0, 3).map(r => r.id));
   const router = useRouter();
@@ -60,7 +61,7 @@ const handleShuffle = () => {
   }
 
   // Копируем текущие visibleRecommended для изменения
-  let newVisible = [...visibleRecommended];
+  const newVisible = [...visibleRecommended];
 
   // Кол-во для замены — минимум из 3 и количества кандидатов
   const replaceCount = Math.min(3, candidates.length);
@@ -73,7 +74,7 @@ const handleShuffle = () => {
   }
 
   setVisibleRecommended(newVisible);
-  setLastVisibleIds(newVisible.map(r => r.id));
+  // setLastVisibleIds(newVisible.map(r => r.id));
 };
 
 
