@@ -1,115 +1,109 @@
 import { useRouter } from "next/router";
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
-import { useState } from "react";
-
-type ChecklistItem = {
-  title: string;
-  description: string;
-  photo: string; // URL картинки
-};
-
-const routeDetails: Record<
-  string,
-  {
-    title: string;
-    description: string;
-    details: string;
-    checklist: ChecklistItem[];
-  }
-> = {
-  petersburg: {
-    title: "Романтический Петербург",
-    description: "Эрмитаж, Невский проспект, прогулки по рекам.",
-    details:
-      "Петербург — культурная столица России с множеством исторических достопримечательностей и атмосферой романтики.",
-    checklist: [
-      {
-        title: "Посещение Эрмитажа",
-        description: "Огромный музей с мировой коллекцией искусства.",
-        photo: "/images/ermitage.jpg",
-      },
-      {
-        title: "Прогулка по Невскому проспекту",
-        description: "Главная улица города с магазинами и кафе.",
-        photo: "/images/nevsky.jpg",
-      },
-      {
-        title: "Поездка на речном трамвайчике",
-        description: "Прогулка по каналам и рекам города.",
-        photo: "/images/riverboat.jpg",
-      },
-      {
-        title: "Визит в Петропавловскую крепость",
-        description: "Исторический центр с музеями и парком.",
-        photo: "/images/peterfort.jpg",
-      },
-    ],
-  },
-  "zolotoe-kolco": {
-    title: "Золотое кольцо России",
-    description: "Владимир, Суздаль, Ростов Великий — история и архитектура.",
-    details:
-      "Золотое кольцо — это древние города с богатой историей, архитектурой и уникальной русской культурой.",
-    checklist: [
-      {
-        title: "Владимирский Успенский собор",
-        description: "Знаменитый собор с фресками Андрея Рублева.",
-        photo: "/images/vladimir_cathedral.jpg",
-      },
-      {
-        title: "Суздальский кремль",
-        description: "Исторический центр города с музеями.",
-        photo: "/images/suzdal_kremlin.jpg",
-      },
-      {
-        title: "Ростовский кремль",
-        description: "Один из красивейших архитектурных ансамблей России.",
-        photo: "/images/rostov_kremlin.jpg",
-      },
-      {
-        title: "Музей деревянного зодчества",
-        description: "Коллекция старинных деревянных построек.",
-        photo: "/images/wooden_architecture.jpg",
-      },
-    ],
-  },
-  kavkaz: {
-    title: "Кавказские горы",
-    description: "Домбай, Эльбрус, горные тропы и горячие источники.",
-    details:
-      "Кавказские горы — отличное место для любителей природы, горных походов и отдыха на природе.",
-    checklist: [
-      {
-        title: "Подъём на Эльбрус",
-        description: "Самая высокая гора Европы, популярное место для альпинизма.",
-        photo: "/images/elbrous.jpg",
-      },
-      {
-        title: "Горнолыжный курорт Домбай",
-        description: "Зимние виды спорта и красивые пейзажи.",
-        photo: "/images/dombay.jpg",
-      },
-      {
-        title: "Поход к водопадам",
-        description: "Маршруты с живописными водопадами и горными видами.",
-        photo: "/images/waterfalls.jpg",
-      },
-      {
-        title: "Посещение горячих источников",
-        description: "Релаксация и здоровье в природных бассейнах.",
-        photo: "/images/hotsprings.jpg",
-      },
-    ],
-  },
-};
+import { routeDetails, ChecklistItem } from "../../data/routesData";
+import { Button } from "../../components/ui/button";
 
 export default function RoutePage() {
   const router = useRouter();
-  const { id } = router.query;
-  const [checked, setChecked] = useState<boolean[]>([false, false, false, false]);
+  const { id } = router.query; // может быть string | string[] | undefined
 
-  if (!id || typeof id !== "string" || !routeDetails[id]) {
+  // Преобразование id в ключ типа keyof routeDetails
+  const routeKey =
+    typeof id === "string" && id in routeDetails
+      ? (id as keyof typeof routeDetails)
+      : null;
+
+  // ---------------- Чек-листы ----------------
+  const [checked, setChecked] = useState<boolean[]>([]);
+  useEffect(() => {
+    if (routeKey) {
+      setChecked(new Array(routeDetails[routeKey].checklist.length).fill(false));
+    }
+  }, [routeKey]);
+
+  const toggleCheck = (index: number) => {
+    setChecked((prev) => {
+      const copy = [...prev];
+      copy[index] = !copy[index];
+      return copy;
+    });
+  };
+
+  // --------------- Закладки ----------------
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [currentBookmarkId, setCurrentBookmarkId] = useState<number | null>(null);
+
+  // при загрузке страницы получаем список закладок
+  useEffect(() => {
+    const token = localStorage.getItem("token") || "";
+    fetch("/api/v1/bookmarks", {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Не удалось загрузить закладки");
+        return res.json();
+      })
+      .then((data: { id: number; route_slug: string }[]) => {
+        const bm = data.find((b) => b.route_slug === routeKey);
+        if (bm) {
+          setIsBookmarked(true);
+          setCurrentBookmarkId(bm.id);
+        }
+      })
+      .catch(console.error);
+  }, [routeKey]);
+
+  // Сохранение маршрута
+  const addBookmark = async () => {
+    if (!routeKey) return;
+    try {
+      const token = localStorage.getItem("token") || "";
+        const res = await fetch("/api/v1/bookmarks", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({ route_slug: routeKey }),
+        });
+      if (!res.ok) throw new Error("Не удалось сохранить маршрут");
+      const bm = await res.json();
+      setIsBookmarked(true);
+      setCurrentBookmarkId(bm.id);
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка сохранения маршрута");
+    }
+  };
+
+  // удалить из закладок
+  const removeBookmark = async () => {
+    if (!currentBookmarkId) return;
+    try {
+      const token = localStorage.getItem("token") || "";
+        const res = await fetch(`/api/v1/bookmarks/${currentBookmarkId}`, {
+          method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+
+      if (res.status !== 204) throw new Error("Не удалось удалить закладку");
+      setIsBookmarked(false);
+      setCurrentBookmarkId(null);
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка удаления из закладок");
+    }
+  };
+
+  // если маршрут не найден
+  if (!routeKey) {
     return (
       <div className="p-8">
         <h1 className="text-3xl font-bold mb-4">Маршрут не найден</h1>
@@ -120,30 +114,38 @@ export default function RoutePage() {
     );
   }
 
-  const { title, description, details, checklist } = routeDetails[id];
-
-  const toggleCheck = (index: number) => {
-    const newChecked = [...checked];
-    newChecked[index] = !newChecked[index];
-    setChecked(newChecked);
-  };
+  const { title, description, details, checklist } = routeDetails[routeKey];
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-100 to-white">
       <Sidebar />
 
       <main className="flex-1 py-12 px-10 max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold mb-4 text-blue-900">{title}</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-4xl font-bold text-blue-900">{title}</h1>
+          {isBookmarked ? (
+            <Button variant="destructive" onClick={removeBookmark}>
+              Убрать из закладок
+            </Button>
+          ) : (
+            <Button onClick={addBookmark}>
+              Сохранить маршрут
+            </Button>
+          )}
+        </div>
+
         <p className="text-lg mb-6 text-gray-700">{description}</p>
         <p className="mb-8 text-gray-600">{details}</p>
 
         <div className="flex flex-col gap-6">
-          {checklist.map((item, i) => (
+          {checklist.map((item: ChecklistItem, i: number) => (
             <button
               key={i}
               onClick={() => toggleCheck(i)}
               className={`flex items-center gap-4 p-6 rounded-2xl border shadow-md transition-colors duration-300 ${
-                checked[i] ? "bg-green-100 border-green-500" : "bg-white border-gray-300 hover:bg-blue-50"
+                checked[i]
+                  ? "bg-green-100 border-green-500"
+                  : "bg-white border-gray-300 hover:bg-blue-50"
               }`}
             >
               <img

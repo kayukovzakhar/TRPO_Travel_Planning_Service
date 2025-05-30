@@ -1,26 +1,10 @@
-import React, { useEffect, useState, useRef } from "react";
+// frontend/pages/index.tsx
+
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { routeDetails } from "../data/routesData";
 import Sidebar from "../components/Sidebar";
-
-const allRoutes = [
-  {
-    id: "petersburg",
-    title: "Романтический Петербург",
-    description: "Эрмитаж, Невский проспект, прогулки по рекам.",
-  },
-  {
-    id: "zolotoe-kolco",
-    title: "Золотое кольцо России",
-    description: "Владимир, Суздаль, Ростов Великий — история и архитектура.",
-  },
-  {
-    id: "kavkaz",
-    title: "Кавказские горы",
-    description: "Домбай, Эльбрус, горные тропы и горячие источники.",
-  },
-];
-
 
 function shuffleArray<T>(array: T[]): T[] {
   const copy = [...array];
@@ -32,51 +16,42 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 export default function Home() {
+  // Стабильный массив маршрутов (slug + данные)
+  const routesArray = useMemo(
+    () =>
+      Object.entries(routeDetails).map(([slug, data]) => ({
+        slug,
+        ...data,
+      })),
+    []
+  );
+
+  // Начальное состояние — первые три маршрута (SSR и клиент одинаково)
+  const [visibleRecommended, setVisibleRecommended] = useState(
+    () => routesArray.slice(0, 3)
+  );
+
+  // После монтирования на клиенте раз в useEffect делаем случайные три
+  useEffect(() => {
+    setVisibleRecommended(shuffleArray(routesArray).slice(0, 3));
+  }, [routesArray]);
+
   const [location, setLocation] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
-  // const [recommendedRoutes, setRecommendedRoutes] = useState(allRoutes);
-  const [recommendedRoutes] = useState(allRoutes);
-  const [visibleRecommended, setVisibleRecommended] = useState(allRoutes.slice(0, 3));
-  // const [lastVisibleIds, setLastVisibleIds] = useState(allRoutes.slice(0, 3).map(r => r.id));
   const router = useRouter();
-
   const inputRef = useRef<HTMLInputElement>(null);
 
   const filteredSuggestions = location.trim()
-    ? recommendedRoutes.filter(r => r.title.toLowerCase().includes(location.toLowerCase())).slice(0, 3)
+    ? routesArray
+        .filter((r) =>
+          r.title.toLowerCase().includes(location.toLowerCase())
+        )
+        .slice(0, 3)
     : [];
 
-const handleShuffle = () => {
-  // Кандидаты — маршруты, которых сейчас нет в visibleRecommended
-  const currentIds = visibleRecommended.map(r => r.id);
-  const candidates = recommendedRoutes.filter(r => !currentIds.includes(r.id));
-
-  if (candidates.length === 0) {
-    // Если кандидатов нет (т.е. все маршруты в visibleRecommended), можно просто перемешать все и показать первые 3
-    const shuffled = shuffleArray(recommendedRoutes);
-    const newVisible = shuffled.slice(0, 3);
-    setVisibleRecommended(newVisible);
-    // setLastVisibleIds(newVisible.map(r => r.id));
-    return;
-  }
-
-  // Копируем текущие visibleRecommended для изменения
-  const newVisible = [...visibleRecommended];
-
-  // Кол-во для замены — минимум из 3 и количества кандидатов
-  const replaceCount = Math.min(3, candidates.length);
-
-  for (let i = 0; i < replaceCount; i++) {
-    // Случайный кандидат
-    const randomIndex = Math.floor(Math.random() * candidates.length);
-    newVisible[i] = candidates[randomIndex];
-    candidates.splice(randomIndex, 1);
-  }
-
-  setVisibleRecommended(newVisible);
-  // setLastVisibleIds(newVisible.map(r => r.id));
-};
-
+  const handleShuffle = () => {
+    setVisibleRecommended(shuffleArray(routesArray).slice(0, 3));
+  };
 
   const handleSearch = () => {
     const trimmed = location.trim();
@@ -86,7 +61,6 @@ const handleShuffle = () => {
     }
   };
 
-  // Закрыть подсказки, если клик вне поля ввода или подсказок
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -97,18 +71,19 @@ const handleShuffle = () => {
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
+    return () =>
       document.removeEventListener("mousedown", handleClickOutside);
-    };
   }, []);
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-100 to-white">
       <Sidebar />
-
       <main className="flex-1 py-12 px-10 relative">
-        <h1 className="text-4xl font-bold text-center mb-6 text-blue-900 drop-shadow">Путешествия</h1>
+        <h1 className="text-4xl font-bold text-center mb-6 text-blue-900 drop-shadow">
+          Путешествия
+        </h1>
 
+        {/* Поисковая строка */}
         <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-6 max-w-3xl mx-auto relative">
           <input
             type="text"
@@ -130,15 +105,13 @@ const handleShuffle = () => {
           >
             Поиск
           </button>
-
-          {/* Подсказки */}
           {showSuggestions && filteredSuggestions.length > 0 && (
             <ul className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-b-xl shadow-lg max-w-md mx-auto mt-1 z-20">
-              {filteredSuggestions.map(route => (
+              {filteredSuggestions.map((route) => (
                 <li
-                  key={route.id}
+                  key={route.slug}
                   className="px-4 py-2 hover:bg-blue-100 cursor-pointer"
-                  onMouseDown={() => { // onMouseDown чтобы избежать потери фокуса input
+                  onMouseDown={() => {
                     setLocation(route.title);
                     setShowSuggestions(false);
                   }}
@@ -150,26 +123,29 @@ const handleShuffle = () => {
           )}
         </div>
 
-        <h2 className="text-2xl font-semibold text-blue-800 text-center mb-4">Рекомендуемые маршруты</h2>
-        <div className="flex items-center justify-center gap-6 mb-6 max-w-5xl mx-auto">
+        {/* Рекомендованные маршруты */}
+        <h2 className="text-2xl font-semibold text-blue-800 text-center mb-4">
+          Рекомендуемые маршруты
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {visibleRecommended.map((route) => (
             <Link
-              key={route.id}
-              href={`/routes/${route.id}`}
-              className="flex-1 block p-6 bg-white shadow-md rounded-2xl border border-blue-100 hover:scale-[1.02] transition-transform duration-300 cursor-pointer"
-              style={{ minWidth: '220px', minHeight: '150px' }}
+              key={route.slug}
+              href={`/routes/${route.slug}`}
+              className="block p-6 bg-white shadow-md rounded-2xl border border-blue-100 hover:scale-[1.02] transition-transform duration-300 cursor-pointer"
             >
-              <h3 className="text-lg font-semibold text-blue-700 break-words">{route.title}</h3>
-              <p className="text-sm text-gray-600 leading-relaxed">{route.description}</p>
+              <h3 className="text-lg font-semibold text-blue-700">
+                {route.title}
+              </h3>
+              <p className="text-sm text-gray-600">{route.description}</p>
             </Link>
           ))}
         </div>
 
-        <div className="flex justify-center mb-10">
+        <div className="flex justify-center mt-8">
           <button
             onClick={handleShuffle}
             className="px-10 py-3 rounded-2xl text-lg shadow-md bg-green-600 hover:bg-green-700 text-white"
-            title="Обновить рекомендуемые маршруты"
           >
             Обновить
           </button>
