@@ -1,17 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // строгий режим React
   reactStrictMode: true,
 
-  // вот этот блок добавляем или расширяем
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: "http://localhost:8000/api/:path*",
-      },
-    ];
-  },
+  output: "export",
+
+  // При желании можно указать базовый путь (если сайт будет в подкаталоге):
+  // basePath: "/my-static-site",
+
+  // Все API-запросы отключены
 };
 
 export default nextConfig;
