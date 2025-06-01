@@ -4,6 +4,7 @@ from db.base    import Base
 from db.session import engine
 from models.route import Route
 from models.bookmark import Bookmark
+# from scikit-learn import Regression
 
 
 from api.v1 import auth, bookmarks   # импортируем файл bookmarks
@@ -25,4 +26,8 @@ app.add_middleware(
 # здесь include_router без второго аргумента
 app.include_router(auth.router)
 app.include_router(bookmarks.router)
+
+
+# Модель для рекомендаций
+# model = Regression.LogisticRegression(random_seed=42)
 
