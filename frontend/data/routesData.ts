@@ -541,7 +541,7 @@ export const routeDetails = {
     {
       title: "Кафе 'Дом Анны Францевны'",
       description: "Уютное место с домашней атмосферой, где подают блюда черноморской кухни и отличные десерты.",
-      photo: "/images/cafe_francevna",
+      photo: "/images/cafe_francevna.jpg",
     },
     {
       title: "Ресторан 'Кавказская пленница'",

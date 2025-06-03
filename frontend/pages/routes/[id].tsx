@@ -7,19 +7,24 @@ import { Button } from "../../components/ui/button";
 
 export default function RoutePage() {
   const router = useRouter();
-  const { id } = router.query; // может быть string | string[] | undefined
+  const { id } = router.query;
 
-  // Преобразование id в ключ типа keyof routeDetails
   const routeKey =
     typeof id === "string" && id in routeDetails
       ? (id as keyof typeof routeDetails)
       : null;
 
-  // ---------------- Чек-листы ----------------
   const [checked, setChecked] = useState<boolean[]>([]);
+  const [visibleIndexes, setVisibleIndexes] = useState<number[]>([]);
+  const [shownIndexes, setShownIndexes] = useState<Set<number>>(new Set());
+
   useEffect(() => {
     if (routeKey) {
-      setChecked(new Array(routeDetails[routeKey].checklist.length).fill(false));
+      const total = routeDetails[routeKey].checklist.length;
+      setChecked(new Array(total).fill(false));
+      const initial = getRandomIndexes(total, new Set(), Math.min(6, total));
+      setVisibleIndexes(initial);
+      setShownIndexes(new Set(initial));
     }
   }, [routeKey]);
 
@@ -31,11 +36,38 @@ export default function RoutePage() {
     });
   };
 
-  // --------------- Закладки ----------------
+  const getRandomIndexes = (total: number, exclude: Set<number>, count: number): number[] => {
+    const available = [...Array(total).keys()].filter((i) => !exclude.has(i));
+    const shuffled = available.sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, count);
+  };
+
+  const replaceOne = (indexToReplace: number) => {
+    if (!routeKey) return;
+    const total = routeDetails[routeKey].checklist.length;
+    const exclude = new Set(visibleIndexes);
+    const candidates = getRandomIndexes(total, exclude, 1);
+    if (candidates.length === 0) return;
+    const newIndex = candidates[0];
+
+    const updated = [...visibleIndexes];
+    updated[indexToReplace] = newIndex;
+    setVisibleIndexes(updated);
+    setShownIndexes((prev) => new Set([...prev, newIndex]));
+  };
+
+  const reloadAll = () => {
+    if (!routeKey) return;
+    const total = routeDetails[routeKey].checklist.length;
+    const count = Math.min(6, total);
+    const newSet = getRandomIndexes(total, new Set(), count);
+    setVisibleIndexes(newSet);
+    setShownIndexes(new Set(newSet));
+  };
+
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [currentBookmarkId, setCurrentBookmarkId] = useState<number | null>(null);
 
-  // при загрузке страницы получаем список закладок
   useEffect(() => {
     const token = localStorage.getItem("token") || "";
     fetch("/api/v1/bookmarks", {
@@ -58,19 +90,18 @@ export default function RoutePage() {
       .catch(console.error);
   }, [routeKey]);
 
-  // Сохранение маршрута
   const addBookmark = async () => {
     if (!routeKey) return;
     try {
       const token = localStorage.getItem("token") || "";
-        const res = await fetch("/api/v1/bookmarks", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-          body: JSON.stringify({ route_slug: routeKey }),
-        });
+      const res = await fetch("/api/v1/bookmarks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ route_slug: routeKey }),
+      });
       if (!res.ok) throw new Error("Не удалось сохранить маршрут");
       const bm = await res.json();
       setIsBookmarked(true);
@@ -81,17 +112,16 @@ export default function RoutePage() {
     }
   };
 
-  // удалить из закладок
   const removeBookmark = async () => {
     if (!currentBookmarkId) return;
     try {
       const token = localStorage.getItem("token") || "";
-        const res = await fetch(`/api/v1/bookmarks/${currentBookmarkId}`, {
-          method: "DELETE",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-          },
-        });
+      const res = await fetch(`/api/v1/bookmarks/${currentBookmarkId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
 
       if (res.status !== 204) throw new Error("Не удалось удалить закладку");
       setIsBookmarked(false);
@@ -102,7 +132,6 @@ export default function RoutePage() {
     }
   };
 
-  // если маршрут не найден
   if (!routeKey) {
     return (
       <div className="p-8">
@@ -128,37 +157,51 @@ export default function RoutePage() {
               Убрать из закладок
             </Button>
           ) : (
-            <Button onClick={addBookmark}>
-              Сохранить маршрут
-            </Button>
+            <Button onClick={addBookmark}>Сохранить маршрут</Button>
           )}
         </div>
 
         <p className="text-lg mb-6 text-gray-700">{description}</p>
         <p className="mb-8 text-gray-600">{details}</p>
 
+        <div className="flex justify-end mb-6">
+          <Button onClick={reloadAll} className="flex items-center gap-2">
+            <span className="text-xl">🔄</span> Обновить подборку
+            </Button>
+            </div>
+
+
         <div className="flex flex-col gap-6">
-          {checklist.map((item: ChecklistItem, i: number) => (
-            <button
-              key={i}
-              onClick={() => toggleCheck(i)}
-              className={`flex items-center gap-4 p-6 rounded-2xl border shadow-md transition-colors duration-300 ${
-                checked[i]
-                  ? "bg-green-100 border-green-500"
-                  : "bg-white border-gray-300 hover:bg-blue-50"
-              }`}
-            >
-              <img
-                src={item.photo}
-                alt={item.title}
-                className="w-24 h-24 object-cover rounded-lg flex-shrink-0"
-              />
-              <div className="text-left">
-                <h3 className="text-xl font-semibold text-blue-800">{item.title}</h3>
-                <p className="text-gray-600">{item.description}</p>
+          {visibleIndexes.map((i, idx) => {
+            const item = checklist[i];
+            return (
+              <div key={i} className="relative">
+                <button
+                  onClick={() => toggleCheck(i)}
+                  className={`w-full text-left flex items-center gap-4 p-6 rounded-2xl border shadow-md transition-colors duration-300 ${
+                    checked[i]
+                      ? "bg-green-100 border-green-500"
+                      : "bg-white border-gray-300 hover:bg-blue-50"
+                  }`}
+                >
+                  <img
+                    src={item.photo}
+                    alt={item.title}
+                    className="w-24 h-24 object-cover rounded-lg flex-shrink-0"
+                  />
+                  <div>
+                    <h3 className="text-xl font-semibold text-blue-800">{item.title}</h3>
+                    <p className="text-gray-600">{item.description}</p>
+                  </div>
+                </button>
+                <button
+                onClick={() => replaceOne(idx)}
+                 className="absolute top-3 right-3 p-1.5 bg-white border border-gray-300 rounded-full shadow hover:bg-blue-50 transition"
+                 title="Заменить место"> 🔁 </button>
+
               </div>
-            </button>
-          ))}
+            );
+          })}
         </div>
 
         <Link href="/" className="inline-block mt-10 text-blue-600 underline">

@@ -6,6 +6,7 @@ export default function Sidebar() {
       <h2 className="text-2xl font-bold mb-6">Меню</h2>
       <nav className="flex flex-col gap-4">
         <Link href="/" className="hover:underline">Главная</Link>
+        <Link href="/saved" className="hover:underline">Мои маршруты</Link>
         <Link href="/about" className="hover:underline">О проекте</Link>
         <Link href="/contacts" className="hover:underline">Контакты</Link>
       </nav>
