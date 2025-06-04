@@ -5,7 +5,7 @@ export type ChecklistItem = {
 };
 
 export const routeDetails = {
-   petersburg: {
+   'petersburg': {
     title: "Романтический Петербург",
     description: "Эрмитаж, Невский проспект, прогулки по каналам.",
     details:
@@ -388,6 +388,7 @@ export const routeDetails = {
   description: "Приморский город с уникальной атмосферой и видами.",
   details:
     "Владивосток — город мостов, холмов, морских деликатесов и японского ветра. Идеален для любителей гастротуризма и природы.",
+  
   checklist: [
     {
       title: "Золотой мост (через бухту Золотой Рог)",

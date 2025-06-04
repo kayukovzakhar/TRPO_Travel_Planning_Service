@@ -9,7 +9,7 @@ export default function RoutePage() {
   const router = useRouter();
   const { id } = router.query;
   const numOfDestinations = 4;
-  
+
   const routeKey =
     typeof id === "string" && id in routeDetails
       ? (id as keyof typeof routeDetails)
@@ -22,7 +22,11 @@ export default function RoutePage() {
     if (routeKey) {
       const total = routeDetails[routeKey].checklist.length;
       setChecked(new Array(total).fill(false));
-      const initial = getRandomIndexes(total, new Set(), Math.min(numOfDestinations, total));
+      const initial = getRandomIndexes(
+        total,
+        new Set(),
+        Math.min(numOfDestinations, total)
+      );
       setVisibleIndexes(initial);
     }
   }, [routeKey]);
@@ -68,71 +72,60 @@ export default function RoutePage() {
     setVisibleIndexes(newSet);
   };
 
+  // LocalStorage-based bookmarks management
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [currentBookmarkId, setCurrentBookmarkId] = useState<number | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("token") || "";
-    fetch("/api/v1/bookmarks", {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Не удалось загрузить закладки");
-        return res.json();
-      })
-      .then((data: { id: number; route_slug: string }[]) => {
-        const bm = data.find((b) => b.route_slug === routeKey);
-        if (bm) {
-          setIsBookmarked(true);
-          setCurrentBookmarkId(bm.id);
-        }
-      })
-      .catch(console.error);
-  }, [routeKey]);
-
-  const addBookmark = async () => {
     if (!routeKey) return;
-    try {
-      const token = localStorage.getItem("token") || "";
-      const res = await fetch("/api/v1/bookmarks", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ route_slug: routeKey }),
-      });
-      if (!res.ok) throw new Error("Не удалось сохранить маршрут");
-      const bm = await res.json();
+
+    const bookmarksJson = localStorage.getItem("bookmarks");
+    const bookmarks: { id: number; route_slug: string }[] = bookmarksJson
+      ? JSON.parse(bookmarksJson)
+      : [];
+
+    const bm = bookmarks.find((b) => b.route_slug === routeKey);
+    if (bm) {
       setIsBookmarked(true);
       setCurrentBookmarkId(bm.id);
-    } catch (e) {
-      console.error(e);
-      alert("Ошибка сохранения маршрута");
-    }
-  };
-
-  const removeBookmark = async () => {
-    if (!currentBookmarkId) return;
-    try {
-      const token = localStorage.getItem("token") || "";
-      const res = await fetch(`/api/v1/bookmarks/${currentBookmarkId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (res.status !== 204) throw new Error("Не удалось удалить закладку");
+    } else {
       setIsBookmarked(false);
       setCurrentBookmarkId(null);
-    } catch (e) {
-      console.error(e);
-      alert("Ошибка удаления из закладок");
     }
+  }, [routeKey]);
+
+  const addBookmark = () => {
+    if (!routeKey) return;
+
+    const bookmarksJson = localStorage.getItem("bookmarks");
+    const bookmarks: { id: number; route_slug: string }[] = bookmarksJson
+      ? JSON.parse(bookmarksJson)
+      : [];
+
+    const newId = Date.now();
+
+    const newBookmark = { id: newId, route_slug: routeKey };
+    bookmarks.push(newBookmark);
+
+    localStorage.setItem("bookmarks", JSON.stringify(bookmarks));
+
+    setIsBookmarked(true);
+    setCurrentBookmarkId(newId);
+  };
+
+  const removeBookmark = () => {
+    if (!currentBookmarkId) return;
+
+    const bookmarksJson = localStorage.getItem("bookmarks");
+    const bookmarks: { id: number; route_slug: string }[] = bookmarksJson
+      ? JSON.parse(bookmarksJson)
+      : [];
+
+    const filtered = bookmarks.filter((b) => b.id !== currentBookmarkId);
+    localStorage.setItem("bookmarks", JSON.stringify(filtered));
+
+    setIsBookmarked(false);
+    setCurrentBookmarkId(null);
   };
 
   if (!routeKey) {
