@@ -2,13 +2,14 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
-import { routeDetails, ChecklistItem } from "../../data/routesData";
+import { routeDetails } from "../../data/routesData";
 import { Button } from "../../components/ui/button";
 
 export default function RoutePage() {
   const router = useRouter();
   const { id } = router.query;
-
+  const numOfDestinations = 4;
+  
   const routeKey =
     typeof id === "string" && id in routeDetails
       ? (id as keyof typeof routeDetails)
@@ -16,15 +17,13 @@ export default function RoutePage() {
 
   const [checked, setChecked] = useState<boolean[]>([]);
   const [visibleIndexes, setVisibleIndexes] = useState<number[]>([]);
-  const [shownIndexes, setShownIndexes] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (routeKey) {
       const total = routeDetails[routeKey].checklist.length;
       setChecked(new Array(total).fill(false));
-      const initial = getRandomIndexes(total, new Set(), Math.min(6, total));
+      const initial = getRandomIndexes(total, new Set(), Math.min(numOfDestinations, total));
       setVisibleIndexes(initial);
-      setShownIndexes(new Set(initial));
     }
   }, [routeKey]);
 
@@ -36,8 +35,14 @@ export default function RoutePage() {
     });
   };
 
-  const getRandomIndexes = (total: number, exclude: Set<number>, count: number): number[] => {
-    const available = [...Array(total).keys()].filter((i) => !exclude.has(i));
+  const getRandomIndexes = (
+    total: number,
+    exclude: Set<number>,
+    count: number
+  ): number[] => {
+    const available = Array.from({ length: total }, (_, i) => i).filter(
+      (i) => !exclude.has(i)
+    );
     const shuffled = available.sort(() => 0.5 - Math.random());
     return shuffled.slice(0, count);
   };
@@ -53,16 +58,14 @@ export default function RoutePage() {
     const updated = [...visibleIndexes];
     updated[indexToReplace] = newIndex;
     setVisibleIndexes(updated);
-    setShownIndexes((prev) => new Set([...prev, newIndex]));
   };
 
   const reloadAll = () => {
     if (!routeKey) return;
     const total = routeDetails[routeKey].checklist.length;
-    const count = Math.min(6, total);
+    const count = Math.min(numOfDestinations, total);
     const newSet = getRandomIndexes(total, new Set(), count);
     setVisibleIndexes(newSet);
-    setShownIndexes(new Set(newSet));
   };
 
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -73,7 +76,7 @@ export default function RoutePage() {
     fetch("/api/v1/bookmarks", {
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     })
       .then((res) => {
@@ -98,7 +101,7 @@ export default function RoutePage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ route_slug: routeKey }),
       });
@@ -119,7 +122,7 @@ export default function RoutePage() {
       const res = await fetch(`/api/v1/bookmarks/${currentBookmarkId}`, {
         method: "DELETE",
         headers: {
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -167,9 +170,8 @@ export default function RoutePage() {
         <div className="flex justify-end mb-6">
           <Button onClick={reloadAll} className="flex items-center gap-2">
             <span className="text-xl">🔄</span> Обновить подборку
-            </Button>
-            </div>
-
+          </Button>
+        </div>
 
         <div className="flex flex-col gap-6">
           {visibleIndexes.map((i, idx) => {
@@ -195,10 +197,12 @@ export default function RoutePage() {
                   </div>
                 </button>
                 <button
-                onClick={() => replaceOne(idx)}
-                 className="absolute top-3 right-3 p-1.5 bg-white border border-gray-300 rounded-full shadow hover:bg-blue-50 transition"
-                 title="Заменить место"> 🔁 </button>
-
+                  onClick={() => replaceOne(idx)}
+                  className="absolute top-3 right-3 p-1.5 bg-white border border-gray-300 rounded-full shadow hover:bg-blue-50 transition"
+                  title="Заменить место"
+                >
+                  🔁
+                </button>
               </div>
             );
           })}
